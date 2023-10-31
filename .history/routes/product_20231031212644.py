@@ -1,0 +1,40 @@
+from fastapi import APIRouter,Body,status, HTTPException
+from models import ProductInDB, ProductModel
+from fastapi.encoders import jsonable_encoder
+from db import Products_db
+from fastapi.responses import JSONResponse
+from typing import Optional, List
+from bson import ObjectId
+from schemas import list_serial
+router = APIRouter()
+
+
+@router.post("/product/create", response_model=ProductInDB)
+async def create_product(product:ProductModel= Body(...)):
+    product = product.model_dump()
+    
+    new_product = await Products_db.insert_one(product)
+    create_product = await Products_db.find_one({"_id": new_product.inserted_id})
+    create_product["_id"] = new_product.inserted_id
+    return create_product
+
+@router.get("/product/all")
+async def list_cars():
+    products = await list_serial(Products_db.find())
+    return products
+
+
+@router.get("/product/list-new", response_model=List[ProductInDB])
+async def list_cars():
+    products = await Products_db.find().to_list(lenght=None)
+    return products
+
+
+
+@router.get("/product/{id}", response_model=ProductInDB)
+async def get_id(id: str):
+    if (product := await Products_db.find_one({"_id": ObjectId(id)})) is not None:
+        return product
+    raise HTTPException(status_code=404, detail="product {id} not found")
+
+
